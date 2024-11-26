@@ -28,3 +28,6 @@ def correlation_ratio(df, category_col, value_col):
     return float(eta_squared)
 
 test = [correlation_ratio(df, x, 'value') for x in list(df.drop('value', axis = 1).columns) ]
+
+
+pipeline.steps[0][1].fit(x_train).transform(x_train)
