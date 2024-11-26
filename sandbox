@@ -1,0 +1,30 @@
+# Correlation ratio function
+def correlation_ratio(df, category_col, value_col):
+    """
+    Calculate the correlation ratio (η²) for a categorical and a continuous variable using pandas.
+    
+    Parameters:
+    - df: pandas DataFrame containing the data
+    - category_col: str, column name for the categorical variable
+    - value_col: str, column name for the continuous variable
+    
+    Returns:
+    - eta_squared: float, the correlation ratio
+    """
+    # Overall mean of the continuous variable
+    overall_mean = df[value_col].mean()
+    
+    # Group by the categorical column and calculate group means and sizes
+    grouped = df.groupby(category_col)[value_col].agg(['mean', 'count'])
+    
+    # Between-group sum of squares
+    ss_between = ((grouped['count'] * (grouped['mean'] - overall_mean)**2).sum())
+    
+    # Total sum of squares
+    ss_total = ((df[value_col] - overall_mean)**2).sum()
+    
+    # Correlation ratio (η²)
+    eta_squared = ss_between / ss_total
+    return float(eta_squared)
+
+test = [correlation_ratio(df, x, 'value') for x in list(df.drop('value', axis = 1).columns) ]
