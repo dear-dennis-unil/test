@@ -1,0 +1,58 @@
+import pandas as pd
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.preprocessing import OneHotEncoder
+
+# Example dataset
+# Replace this with your actual dataset
+data = pd.read_csv('your_data.csv')
+
+# Define categorical and numerical features
+categorical_features = ['cat1', 'cat2', 'cat3', 'cat4', 'cat5']  # Replace with your actual feature names
+numerical_features = ['log_premium', 'log_retention']
+target = 'log_ultimate_amount'  # Replace with your target column name
+
+# Bucketize log_premium into 10 bins
+data['log_premium_bucket'] = pd.qcut(data['log_premium'], q=10, labels=False)
+
+# One-hot encode categorical features
+encoder = OneHotEncoder(drop='first', sparse_output=False)
+encoded_categorical = encoder.fit_transform(data[categorical_features])
+
+# Combine encoded features with numerical ones
+X = np.hstack([encoded_categorical, data[numerical_features].values])
+y = data[target].values
+
+# Loop through each bucket and perform cross-validation
+results = []
+kf = KFold(n_splits=5, shuffle=True, random_state=42)  # 5-fold cross-validation
+
+for bucket in range(10):
+    print(f"Cross-validating model for bucket {bucket}")
+    
+    # Filter data for the current bucket
+    bucket_data = data[data['log_premium_bucket'] == bucket]
+    X_bucket = np.hstack([
+        encoder.transform(bucket_data[categorical_features]),
+        bucket_data[numerical_features].values
+    ])
+    y_bucket = bucket_data[target].values
+    
+    # Initialize model
+    model = DecisionTreeRegressor(random_state=42)
+    
+    # Perform cross-validation
+    mse_scores = -cross_val_score(model, X_bucket, y_bucket, cv=kf, scoring='neg_mean_squared_error')
+    r2_scores = cross_val_score(model, X_bucket, y_bucket, cv=kf, scoring='r2')
+    
+    # Store results
+    results.append({
+        'Bucket': bucket,
+        'Avg MSE': mse_scores.mean(),
+        'Avg R²': r2_scores.mean()
+    })
+
+# Display results
+results_df = pd.DataFrame(results)
+print(results_df)
