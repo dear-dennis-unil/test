@@ -1,0 +1,57 @@
+import pandas as pd
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import OneHotEncoder
+
+# Example dataset
+# Replace this with your actual dataset
+data = pd.read_csv('your_data.csv')
+
+# Define categorical and numerical features
+categorical_features = ['cat1', 'cat2', 'cat3', 'cat4', 'cat5']  # Replace with your actual feature names
+numerical_features = ['log_premium', 'log_retention']
+target = 'log_ultimate_amount'  # Replace with your target column name
+
+# Bucketize log_premium into 10 bins
+data['log_premium_bucket'] = pd.qcut(data['log_premium'], q=10, labels=False)
+
+# One-hot encode categorical features
+encoder = OneHotEncoder(drop='first', sparse_output=False)
+encoded_categorical = encoder.fit_transform(data[categorical_features])
+
+# Combine encoded features with numerical ones
+X = np.hstack([encoded_categorical, data[numerical_features].values])
+y = data[target].values
+
+# Loop through each bucket and fit a model
+results = []
+for bucket in range(10):
+    print(f"Training model for bucket {bucket}")
+    
+    # Filter data for the current bucket
+    bucket_data = data[data['log_premium_bucket'] == bucket]
+    X_bucket = np.hstack([
+        encoder.transform(bucket_data[categorical_features]),
+        bucket_data[numerical_features].values
+    ])
+    y_bucket = bucket_data[target].values
+    
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(X_bucket, y_bucket, test_size=0.2, random_state=42)
+    
+    # Train model
+    model = DecisionTreeRegressor(random_state=42)
+    model.fit(X_train, y_train)
+    
+    # Evaluate model
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    
+    results.append({'Bucket': bucket, 'MSE': mse, 'R²': r2})
+
+# Display results
+results_df = pd.DataFrame(results)
+print(results_df)
