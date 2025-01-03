@@ -1,0 +1,84 @@
+import pandas as pd
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import OneHotEncoder
+
+# Example dataset
+# Replace this with your actual dataset
+data = pd.read_csv('your_data.csv')
+
+# Define categorical and numerical features
+categorical_features = ['cat1', 'cat2', 'cat3', 'cat4', 'cat5']  # Replace with your actual feature names
+numerical_features = ['log_premium', 'log_retention']
+target = 'log_ultimate_amount'  # Replace with your target column name
+
+# Bucketize log_premium into 10 bins
+data['log_premium_bucket'] = pd.qcut(data['log_premium'], q=10, labels=False)
+
+# One-hot encode categorical features
+encoder = OneHotEncoder(drop='first', sparse_output=False)
+encoder.fit(data[categorical_features])  # Fit once for consistency
+
+# Prepare K-Fold Cross Validation
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+results = []
+
+for bucket in range(10):
+    print(f"Cross-validating model for bucket {bucket}")
+    
+    # Filter data for the current bucket
+    bucket_data = data[data['log_premium_bucket'] == bucket]
+    X_bucket = np.hstack([
+        encoder.transform(bucket_data[categorical_features]),
+        bucket_data[numerical_features].values
+    ])
+    y_bucket = bucket_data[target].values
+    
+    # Initialize variables to track metrics and importances
+    mse_scores = []
+    r2_scores = []
+    importances = np.zeros(X_bucket.shape[1])  # To accumulate feature importances
+    
+    # Perform cross-validation manually
+    for train_idx, test_idx in kf.split(X_bucket):
+        X_train, X_test = X_bucket[train_idx], X_bucket[test_idx]
+        y_train, y_test = y_bucket[train_idx], y_bucket[test_idx]
+        
+        # Train model
+        model = DecisionTreeRegressor(random_state=42)
+        model.fit(X_train, y_train)
+        
+        # Evaluate metrics
+        mse_scores.append(mean_squared_error(y_test, model.predict(X_test)))
+        r2_scores.append(r2_score(y_test, model.predict(X_test)))
+        
+        # Accumulate feature importances
+        importances += model.feature_importances_
+    
+    # Average results across folds
+    avg_mse = np.mean(mse_scores)
+    avg_r2 = np.mean(r2_scores)
+    avg_importances = importances / kf.n_splits  # Average feature importances
+    
+    # Prepare feature importance DataFrame
+    feature_names = encoder.get_feature_names_out(categorical_features).tolist() + numerical_features
+    importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': avg_importances})
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+    
+    # Store results
+    results.append({
+        'Bucket': bucket,
+        'Avg MSE': avg_mse,
+        'Avg R²': avg_r2,
+        'Importances': importance_df
+    })
+
+# Display results for all buckets
+for result in results:
+    print(f"\nBucket {result['Bucket']}:")
+    print(f"Average MSE: {result['Avg MSE']}")
+    print(f"Average R²: {result['Avg R²']}")
+    print("Feature Importances:")
+    print(result['Importances'])
