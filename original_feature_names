@@ -43,3 +43,10 @@ these_columns = [
 | unique | 5               | 15               | 101         | 20      | 2           | 2          | 772            |
 | top    | Nor Cen East Eu | Uk Ire Nord Neth | USA         | Auto NP | N           | Y          | AXA SA         |
 | freq   | 1239            | 765              | 536         | 843     | 1938        | 2944       | 52             |
+
+|        | ri_region       | ri_area          | geo_level   | reporting_country   | lobn1   | per_event   | per_risk   | company_name   |
+|:-------|:----------------|:-----------------|:------------|:--------------------|:--------|:------------|:-----------|:---------------|
+| count  | 3744            | 3744             | 3744        | 3744                | 3744    | 3744        | 3744       | 3744           |
+| unique | 5               | 15               | 101         | 112                 | 20      | 2           | 2          | 772            |
+| top    | Nor Cen East Eu | Uk Ire Nord Neth | USA         | USA                 | Auto NP | N           | Y          | AXA SA         |
+| freq   | 1239            | 765              | 536         | 549                 | 843     | 1938        | 2944       | 52             |
