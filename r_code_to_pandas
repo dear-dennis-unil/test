@@ -1,0 +1,14 @@
+df |> 
+  select(contract_omega_id, omega_section, uw_year, inception_date, expiry_date, quarter, data_type, earned_premium) |> 
+  mutate(quarter = factor(fct_relevel(quarter,'3LYE', '2LYE', 'SQ', 'PQ', 'CQ'), ordered = TRUE)) |> 
+  arrange(contract_omega_id, omega_section, uw_year,  inception_date, expiry_date, quarter)  |> 
+  pivot_wider(names_from = quarter, values_from = earned_premium) |> 
+  mutate(across(all_of(c('3LYE', '2LYE', 'SQ', 'PQ', 'CQ')),  ~round(.x, 2))) |>  
+  filter(uw_year == 2023) |> 
+  filter(expiry_date <= ymd('2024-06-30')) |> 
+  mutate(interval = interval(inception_date, expiry_date) %/% days()) |> 
+  filter(interval >= 363, interval <= 366) |> 
+  filter(2024-06-30)
+  mutate(inception_month = month(inception_date)) |> 
+  filter(inception_month  == 5) |> 
+  View()
