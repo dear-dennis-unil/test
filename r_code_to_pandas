@@ -12,3 +12,40 @@ df |>
   mutate(inception_month = month(inception_date)) |> 
   filter(inception_month  == 5) |> 
   View()
+
+
+result = (
+    df
+    # Select specific columns
+    .filter(items=['contract_omega_id', 'omega_section', 'uw_year', 'inception_date', 
+                   'expiry_date', 'quarter', 'data_type', 'earned_premium'])
+    # Modify the quarter column to reorder levels as an ordered category
+    .assign(quarter=lambda x: pd.Categorical(x['quarter'], 
+                                             categories=['3LYE', '2LYE', 'SQ', 'PQ', 'CQ'], 
+                                             ordered=True))
+    # Sort by specific columns
+    .sort_values(by=['contract_omega_id', 'omega_section', 'uw_year', 
+                     'inception_date', 'expiry_date', 'quarter'])
+    # Pivot the DataFrame
+    .pivot(index=['contract_omega_id', 'omega_section', 'uw_year', 
+                  'inception_date', 'expiry_date', 'data_type'], 
+           columns='quarter', values='earned_premium')
+    .reset_index()
+    # Round specified columns to 2 decimal places
+    .assign(**{col: lambda x, col=col: x[col].round(2) for col in ['3LYE', '2LYE', 'SQ', 'PQ', 'CQ']})
+    # Filter rows based on conditions
+    .query('uw_year == 2023')
+    # Revised filter for expiry_date
+    .query('expiry_date <= @pd.to_datetime("2024-06-30")')
+    # Add a new column for the interval in days
+    .assign(interval=lambda x: (pd.to_datetime(x['expiry_date']) - pd.to_datetime(x['inception_date'])).dt.days)
+    # Filter rows based on interval conditions
+    .query('interval >= 363 & interval <= 366')
+    # Add a new column for the inception month
+    .assign(inception_month=lambda x: pd.to_datetime(x['inception_date']).dt.month)
+    # Filter rows where inception month equals 5
+    .query('inception_month == 5')
+)
+
+# View the resulting DataFrame
+print(result)
