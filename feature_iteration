@@ -1,0 +1,79 @@
+import itertools
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+
+# Example Data (Add two more numeric features: Feature2, Feature3)
+data = pd.DataFrame({
+    'Location1': ['A', 'B', 'A', 'C'],
+    'Location2': ['X', 'Y', 'Y', 'Z'],
+    'LineOfBusiness1': ['Life', 'Health', 'Life', 'Health'],
+    'LineOfBusiness2': ['A', 'B', 'A', 'B'],
+    'WeatherType': ['Sunny', 'Rainy', 'Cloudy', 'Sunny'],
+    'Feature1': [1, 2, 3, 4],
+    'Feature2': [10, 20, 30, 40],  # New numeric feature
+    'Feature3': [100, 200, 300, 400],  # New numeric feature
+    'Target': [100, 200, 150, 250]
+})
+
+# Define groups
+location_features = ['Location1', 'Location2']
+line_of_business_features = ['LineOfBusiness1', 'LineOfBusiness2']
+weather_features = ['WeatherType']
+numerical_features = ['Feature1', 'Feature2', 'Feature3']  # Updated list of numeric features
+target = 'Target'
+
+# Helper function to generate all subsets of a list
+def all_subsets(features):
+    return chain.from_iterable(itertools.combinations(features, r) for r in range(len(features) + 1))
+
+# Generate all subsets for each group
+location_subsets = list(all_subsets(location_features))
+line_of_business_subsets = list(all_subsets(line_of_business_features))
+weather_subsets = list(all_subsets(weather_features))
+
+# Generate all combinations across groups
+feature_combinations = list(product(location_subsets, line_of_business_subsets, weather_subsets))
+
+# Flatten combinations and add numerical features
+results = []
+
+for loc_subset, lob_subset, weather_subset in feature_combinations:
+    selected_features = list(loc_subset) + list(lob_subset) + list(weather_subset) + numerical_features
+    
+    if not selected_features:  # Skip empty combinations
+        continue
+    
+    # Preprocessing pipeline
+    categorical_transformer = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
+    preprocessor = ColumnTransformer(
+        transformers=[('cat', categorical_transformer, list(loc_subset + lob_subset + weather_subset))],
+        remainder='passthrough'  # Keep numerical features as-is
+    )
+    
+    # Model pipeline
+    pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('model', RandomForestRegressor(random_state=42))
+    ])
+    
+    # Cross-validation
+    X = data[selected_features]
+    y = data[target]
+    scores = cross_val_score(pipeline, X, y, cv=3, scoring='neg_mean_squared_error')
+    
+    # Store results
+    results.append({
+        'Location Features': loc_subset,
+        'Line of Business Features': lob_subset,
+        'Weather Features': weather_subset,
+        'Numeric Features': numerical_features,  # Keep track of numeric features explicitly
+        'Mean MSE': -scores.mean()
+    })
+
+# Convert results to DataFrame and sort
+results_df = pd.DataFrame(results).sort_values(by='Mean MSE')
+import ace_tools as tools; tools.display_dataframe_to_user(name="Feature Combination Results with Additional Numeric Features", dataframe=results_df)
