@@ -77,3 +77,95 @@ for loc_subset, lob_subset, weather_subset in feature_combinations:
 # Convert results to DataFrame and sort
 results_df = pd.DataFrame(results).sort_values(by='Mean MSE')
 import ace_tools as tools; tools.display_dataframe_to_user(name="Feature Combination Results with Additional Numeric Features", dataframe=results_df)
+
+
+
+# code 2
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
+# Example Data (unchanged from previous examples)
+data = pd.DataFrame({
+    'Location1': ['A', 'B', 'A', 'C'],
+    'Location2': ['X', 'Y', 'Y', 'Z'],
+    'LineOfBusiness1': ['Life', 'Health', 'Life', 'Health'],
+    'LineOfBusiness2': ['A', 'B', 'A', 'B'],
+    'WeatherType': ['Sunny', 'Rainy', 'Cloudy', 'Sunny'],
+    'Feature1': [1, 2, 3, 4],   # Numeric feature
+    'Feature2': [10, 20, 30, 40],  # Numeric feature
+    'Feature3': [100, 200, 300, 400],  # Numeric feature
+    'Target': [100, 200, 150, 250]
+})
+
+# Define groups
+location_features = ['Location1', 'Location2']
+line_of_business_features = ['LineOfBusiness1', 'LineOfBusiness2']
+weather_features = ['WeatherType']
+numeric_features = ['Feature1', 'Feature2', 'Feature3']
+target = 'Target'
+
+# Split data into training and testing sets
+train_data, test_data = train_test_split(data, test_size=0.3, random_state=42)
+
+# Helper function to generate all subsets of a list
+def all_subsets(features):
+    return chain.from_iterable(itertools.combinations(features, r) for r in range(len(features) + 1))
+
+# Generate all subsets for each group
+location_subsets = list(all_subsets(location_features))
+line_of_business_subsets = list(all_subsets(line_of_business_features))
+weather_subsets = list(all_subsets(weather_features))
+numeric_subsets = list(all_subsets(numeric_features))  # Generate subsets for numeric features
+
+# Generate all combinations across groups
+feature_combinations = list(product(location_subsets, line_of_business_subsets, weather_subsets, numeric_subsets))
+
+# Flatten combinations and use selected numeric features
+results = []
+
+for loc_subset, lob_subset, weather_subset, num_subset in feature_combinations:
+    selected_features = list(loc_subset) + list(lob_subset) + list(weather_subset) + list(num_subset)
+    
+    if not selected_features:  # Skip empty combinations
+        continue
+    
+    # Preprocessing pipeline
+    categorical_transformer = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
+    preprocessor = ColumnTransformer(
+        transformers=[('cat', categorical_transformer, list(loc_subset + lob_subset + weather_subset))],
+        remainder='passthrough'  # Pass through selected numeric features
+    )
+    
+    # Model pipeline
+    pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('model', RandomForestRegressor(random_state=42))
+    ])
+    
+    # Split training and testing data
+    X_train = train_data[selected_features]
+    X_test = test_data[selected_features]
+    y_train = train_data[target]
+    y_test = test_data[target]
+    
+    # Fit the model
+    pipeline.fit(X_train, y_train)
+    
+    # Predict and calculate MSE
+    y_pred = pipeline.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    
+    # Store results
+    results.append({
+        'Location Features': loc_subset,
+        'Line of Business Features': lob_subset,
+        'Weather Features': weather_subset,
+        'Numeric Features': num_subset,
+        'Mean MSE': mse
+    })
+
+# Convert results to DataFrame and sort
+results_df = pd.DataFrame(results).sort_values(by='Mean MSE')
+import ace_tools as tools; tools.display_dataframe_to_user(name="Feature Combination Results with Train-Test Split", dataframe=results_df)
